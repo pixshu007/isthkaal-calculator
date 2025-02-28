@@ -81,6 +81,9 @@ def get_nakshatra_details(moon_longitude):
 def calculate_nakshatra():
     try:
         data = request.json
+        if not data:
+            return jsonify({"error": "Invalid input. Please send JSON data."}), 400
+
         name = data.get("name")
         dob = data.get("dob")
         birth_time = data.get("birthTime")
@@ -98,6 +101,9 @@ def calculate_nakshatra():
         dt = local_tz.localize(dt)
 
         moon_long = get_moon_longitude(dt.year, dt.month, dt.day, dt.hour, dt.minute, lat, lon)
+        if moon_long is None:
+            return jsonify({"error": "चंद्रमा की स्थिति निर्धारित नहीं हो सकी।"}), 500
+
         nakshatra, pada, rashi, rashi_naam, reason = get_nakshatra_details(moon_long)
 
         return jsonify({
@@ -109,8 +115,10 @@ def calculate_nakshatra():
             "rashi_naam": rashi_naam,
             "rashi_reason": reason
         })
+
     except Exception as e:
         return jsonify({"error": f"सर्वर त्रुटि: {str(e)}"}), 500
+
 
 # 🔹 Start the Flask App on Render
 import os
