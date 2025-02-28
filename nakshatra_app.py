@@ -25,7 +25,9 @@ def get_lat_lon(place):
 def get_moon_longitude(year, month, day, hour, minute, lat, lon):
     swe.set_ephe_path("")  # Use Swiss Ephemeris default data
     jd = swe.julday(year, month, day, hour + (minute / 60.0))  # Julian Day
-    _, moon_longitude, _ = swe.calc_ut(jd, swe.MOON)
+    result = swe.calc_ut(jd, swe.MOON)
+moon_longitude = result[0]  # Extract the first value as Moon's longitude
+
     return moon_longitude
 
 # 🔹 Function to determine Nakshatra, Pada, Rashi & Rashi Naam
