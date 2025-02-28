@@ -28,26 +28,46 @@ def get_moon_longitude(year, month, day, hour, minute, lat, lon):
     _, moon_longitude, _ = swe.calc_ut(jd, swe.MOON)
     return moon_longitude
 
-# 🔹 Function to determine Nakshatra & Pada
+# 🔹 Function to determine Nakshatra, Pada, Rashi & Rashi Naam
 def get_nakshatra_details(moon_longitude):
     nakshatras = [
-        "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra", 
-        "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", 
-        "Uttara Phalguni", "Hasta", "Chitra", "Swati", "Vishakha", 
-        "Anuradha", "Jyeshtha", "Mula", "Purvashadha", "Uttarashadha", 
-        "Shravana", "Dhanishta", "Shatabhisha", "Purva Bhadrapada", 
-        "Uttara Bhadrapada", "Revati"
+        "अश्विनी", "भरणी", "कृत्तिका", "रोहिणी", "मृगशिरा", "आर्द्रा", 
+        "पुनर्वसु", "पुष्य", "आश्लेषा", "मघा", "पूर्व फाल्गुनी", 
+        "उत्तर फाल्गुनी", "हस्त", "चित्रा", "स्वाति", "विशाखा", 
+        "अनुराधा", "ज्येष्ठा", "मूल", "पूर्वाषाढ़ा", "उत्तराषाढ़ा", 
+        "श्रवण", "धनिष्ठा", "शतभिषा", "पूर्व भाद्रपद", 
+        "उत्तर भाद्रपद", "रेवती"
     ]
 
-    pada_names = ["Pada 1", "Pada 2", "Pada 3", "Pada 4"]
+    rashi_list = [
+        ("मेष", "चू, चे, चो, ला, ली, लू, ले, लो, अ"),  
+        ("वृषभ", "ई, ऊ, ए, ओ, वा, वी, वू, वे, वो"),  
+        ("मिथुन", "का, की, कू, घ, ङ, छ, के, को, हा"),  
+        ("कर्क", "ही, हू, हे, हो, डा, डी, डू, डे, डो"),  
+        ("सिंह", "मा, मी, मू, मे, मो, टा, टी, टू, टे"),  
+        ("कन्या", "टो, पा, पी, पू, ष, ण, ठ, पे, पो"),  
+        ("तुला", "रा, री, रू, रे, रो, ता, ती, तू, ते"),  
+        ("वृश्चिक", "तो, ना, नी, नू, ने, नो, या, यी, यू"),  
+        ("धनु", "ये, यो, भा, भी, भू, धा, फा, ढा, भे"),  
+        ("मकर", "भो, जा, जी, खी, खू, खे, खो, गा, गी"),  
+        ("कुंभ", "गू, गे, गो, सा, सी, सू, से, सो, दा"),  
+        ("मीन", "दी, दू, थ, झ, ञ, दे, दो, चा, ची")  
+    ]
 
-    nakshatra_index = int(moon_longitude // 13.3333)  # Find Nakshatra
+    pada_names = ["चरण 1", "चरण 2", "चरण 3", "चरण 4"]
+
+    nakshatra_index = int(moon_longitude // 13.3333)  
     nakshatra_name = nakshatras[nakshatra_index]
 
-    pada_index = int((moon_longitude % 13.3333) // 3.3333)  # Find Pada
+    pada_index = int((moon_longitude % 13.3333) // 3.3333)  
     nakshatra_pada = pada_names[pada_index]
 
-    return nakshatra_name, nakshatra_pada
+    rashi_index = int(moon_longitude // 30)  
+    rashi_name, rashi_naam_akshar = rashi_list[rashi_index]
+
+    reason = f"आपकी राशि {rashi_name} है, इसलिए आपका नाम {rashi_naam_akshar} अक्षर से शुरू होना शुभ माना जाता है।"
+
+    return nakshatra_name, nakshatra_pada, rashi_name, rashi_naam_akshar, reason
 
 @app.route("/calculate-nakshatra", methods=["POST"])
 def calculate_nakshatra():
@@ -64,24 +84,24 @@ def calculate_nakshatra():
     if lat is None or lon is None:
         return jsonify({"error": "Invalid birth place"}), 400
 
-    # Convert date & time to Julian format
     dt = datetime.strptime(f"{dob} {birth_time}", "%Y-%m-%d %H:%M")
     local_tz = pytz.timezone("Asia/Kolkata")
     dt = local_tz.localize(dt)
     
     moon_long = get_moon_longitude(dt.year, dt.month, dt.day, dt.hour, dt.minute, lat, lon)
-    nakshatra, pada = get_nakshatra_details(moon_long)
+    nakshatra, pada, rashi, rashi_naam, reason = get_nakshatra_details(moon_long)
 
     return jsonify({
         "name": name,
         "dob": dob,
         "nakshatra": nakshatra,
-        "nakshatra_pada": pada
+        "nakshatra_pada": pada,
+        "rashi": rashi,
+        "rashi_naam": rashi_naam,
+        "rashi_reason": reason
     })
 
 import os
-
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))  # Render assigns a dynamic port
+    port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=True)
-
