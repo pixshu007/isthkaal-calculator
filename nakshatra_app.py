@@ -23,14 +23,20 @@ def get_lat_lon(place):
 
 # 🔹 Function to get Moon's position (longitude)
 def get_moon_longitude(year, month, day, hour, minute, lat, lon):
-    swe.set_ephe_path("")  # Use Swiss Ephemeris default data
-    jd = swe.julday(year, month, day, hour + (minute / 60.0))  # Julian Day
-    result = swe.calc_ut(jd, swe.MOON)  # Get Moon's data
-    moon_longitude = result[0]  # Extract only the Moon's longitude
-    return moon_longitude  # ✅ Correctly indented return statement
+    swe.set_ephe_path("")  
+    jd = swe.julday(year, month, day, hour + (minute / 60.0))  
+    result = swe.calc_ut(jd, swe.MOON)
+
+    if isinstance(result, tuple):  # Ensure result is valid
+        moon_longitude = float(result[0])  # Extract only the first value
+        return moon_longitude
+    return None  # Return None if calculation fails
 
 # 🔹 Function to determine Nakshatra, Pada, Rashi & Rashi Naam
 def get_nakshatra_details(moon_longitude):
+    if moon_longitude is None:
+        return None, None, None, None, "चंद्रमा की स्थिति का निर्धारण नहीं हो सका।"
+
     nakshatras = [
         "अश्विनी", "भरणी", "कृत्तिका", "रोहिणी", "मृगशिरा", "आर्द्रा", 
         "पुनर्वसु", "पुष्य", "आश्लेषा", "मघा", "पूर्व फाल्गुनी", 
@@ -70,38 +76,43 @@ def get_nakshatra_details(moon_longitude):
 
     return nakshatra_name, nakshatra_pada, rashi_name, rashi_naam_akshar, reason
 
+# 🔹 API Endpoint for Nakshatra Calculation
 @app.route("/calculate-nakshatra", methods=["POST"])
 def calculate_nakshatra():
-    data = request.json
-    name = data.get("name")
-    dob = data.get("dob")
-    birth_time = data.get("birthTime")
-    birth_place = data.get("birthPlace")
+    try:
+        data = request.json
+        name = data.get("name")
+        dob = data.get("dob")
+        birth_time = data.get("birthTime")
+        birth_place = data.get("birthPlace")
 
-    if not (name and dob and birth_time and birth_place):
-        return jsonify({"error": "Missing required fields"}), 400
+        if not (name and dob and birth_time and birth_place):
+            return jsonify({"error": "कृपया सभी आवश्यक फ़ील्ड भरें।"}), 400
 
-    lat, lon = get_lat_lon(birth_place)
-    if lat is None or lon is None:
-        return jsonify({"error": "Invalid birth place"}), 400
+        lat, lon = get_lat_lon(birth_place)
+        if lat is None or lon is None:
+            return jsonify({"error": "अमान्य जन्म स्थान।"}), 400
 
-    dt = datetime.strptime(f"{dob} {birth_time}", "%Y-%m-%d %H:%M")
-    local_tz = pytz.timezone("Asia/Kolkata")
-    dt = local_tz.localize(dt)
-    
-    moon_long = get_moon_longitude(dt.year, dt.month, dt.day, dt.hour, dt.minute, lat, lon)
-    nakshatra, pada, rashi, rashi_naam, reason = get_nakshatra_details(moon_long)
+        dt = datetime.strptime(f"{dob} {birth_time}", "%Y-%m-%d %H:%M")
+        local_tz = pytz.timezone("Asia/Kolkata")
+        dt = local_tz.localize(dt)
+        
+        moon_long = get_moon_longitude(dt.year, dt.month, dt.day, dt.hour, dt.minute, lat, lon)
+        nakshatra, pada, rashi, rashi_naam, reason = get_nakshatra_details(moon_long)
 
-    return jsonify({
-        "name": name,
-        "dob": dob,
-        "nakshatra": nakshatra,
-        "nakshatra_pada": pada,
-        "rashi": rashi,
-        "rashi_naam": rashi_naam,
-        "rashi_reason": reason
-    })
+        return jsonify({
+            "name": name,
+            "dob": dob,
+            "nakshatra": nakshatra,
+            "nakshatra_pada": pada,
+            "rashi": rashi,
+            "rashi_naam": rashi_naam,
+            "rashi_reason": reason
+        })
+    except Exception as e:
+        return jsonify({"error": f"सर्वर त्रुटि: {str(e)}"}), 500
 
+# 🔹 Start the Flask App on Render
 import os
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
